@@ -8,7 +8,6 @@ import hla.rti.*;
 interface ObjectRootInterface {
     int getUniqueID();
 
-
     /**
      * Returns the handle (RTI assigned) of this instance's object class .
      *
@@ -77,17 +76,15 @@ interface ObjectRootInterface {
      */
     void unsubscribeObject(RTIambassador rti);
 
-
     /**
      * Returns a data structure containing the handles of all attributes for this object
      * class that are currently marked for subscription.  To actually subscribe to these
-     * attributes, a federate must call <objectclassname>.subscribe( RTIambassador rti ).
+     * attributes, a federate must call &lt;objectclassname&gt;.subscribe( RTIambassador rti ).
      *
      * @return data structure containing the handles of all attributes for this object
      * class that are currently marked for subscription
      */
     AttributeHandleSet getSubscribedAttributeHandleSet();
-
 
     /**
      * Requests an attribute update for this object instance from the federate that
@@ -104,7 +101,6 @@ interface ObjectRootInterface {
      * @return the handle (RTI assigned) of this object class instance.
      */
     int getObjectHandle();
-
 
     /**
      * Returns the timestamp for this object.  "receive order" objects
@@ -161,7 +157,7 @@ interface ObjectRootInterface {
      * Sets the value of the attribute named "datamemberName" to "value"
      * in this object.  "value" is converted to data type of "datamemberName"
      * if needed.
-     * This action can also be affected by calling the set_<datamemberName>( value )
+     * This action can also be affected by calling the set_&lt;datamemberName&gt;( value )
      * method on the object using a reference to the object's actual
      * class.
      *
@@ -175,7 +171,7 @@ interface ObjectRootInterface {
      * Sets the value of the attribute named "datamemberName" to "value"
      * in this object.  "value" should have the same data type as that of
      * the "datamemberName" attribute.
-     * This action can also be affected by calling the set_<datamemberName>( value )
+     * This action can also be affected by calling the set_&lt;datamemberName&gt;( value )
      * method on the object using a reference to the object's actual
      * class.
      *
@@ -195,6 +191,18 @@ interface ObjectRootInterface {
      * @param rti handle to the RTI
      */
     void registerObject(RTIambassador rti);
+
+    /**
+     * Registers this object with the RTI using the given name.  This method is usually
+     * called by a federate who "owns" this object, i.e. the federate that created it and
+     * has write-privileges to its attributes (so, it is responsible for updating
+     * these attribute and conveying their updated values to the RTI).
+     *
+     * @param rti handle to the RTI
+     * @param name unique identifier to assign to the object instance
+     * @throws ObjectAlreadyRegistered if the name is already assigned to another object instance
+     */
+    public void registerObject(RTIambassador rti, String name) throws ObjectAlreadyRegistered;
 
     /**
      * Unregisters this object with the RTI.  The RTI will destroy all information

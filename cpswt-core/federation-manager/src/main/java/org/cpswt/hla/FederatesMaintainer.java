@@ -174,7 +174,7 @@ public class FederatesMaintainer {
 
         logger.trace("resignedFederates ::");
         for (FederateInfo fi : this.resignedFederates) {
-            logger.trace("\t[{}] :: [RESIGNED @ {}] :: {} :: {}", fi.isLateJoiner() ? "LATEJOINER" : " EXPECTED ", fi.resignTime, fi.isTimedOutResign() ? "CRASHED" : "", fi.getFederateId());
+            logger.trace("\t[{}] :: [RESIGNED @ {}] :: {} :: {}", fi.isLateJoiner() ? "LATEJOINER" : " EXPECTED ", fi.resignTime, fi.isTimedOutResign() ? "RESIGNED" : "", fi.getFederateId());
         }
         if (this.resignedFederates.size() == 0) {
             logger.trace("\t NONE");

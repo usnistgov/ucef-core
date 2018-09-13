@@ -154,7 +154,7 @@ public class FederateConfigParser {
         if (configFile != null && configFile.exists()) {
 
             try {
-                federateParameter = ConfigParser.parseConfig(configFile, clazz);
+                federateParameter = ConfigParser.parseFederateConfig(configFile, clazz);
             } catch (IOException ioExp) {
                 logger.error("Parsing input configuration file failed.");
                 logger.error(ioExp);
@@ -198,9 +198,11 @@ public class FederateConfigParser {
 
                     if (optType == String.class) {
                         optField.set(federateParameter, optType.cast(optVal));
+                        federateParameter.fieldsSet.add(optField.getName());
                     } else if (supportedCLIArgTypes.contains(optType)) {
                         Object castedValue = optType.cast(optType.getDeclaredMethod("valueOf", String.class).invoke(null, optVal));
                         optField.set(federateParameter, castedValue);
+                        federateParameter.fieldsSet.add(optField.getName());
                     } else {
                         logger.error("{} type not supported as command line argument. Skipping...", optType.getName());
                     }
@@ -219,6 +221,17 @@ public class FederateConfigParser {
             }
         }
 
+        // get TParam class' FederateParameter fields
+        Set<Field> federateParameterFields = FederateConfig.getMandatoryFederateParameterFields(clazz);
+
+        // warn if a field wasn't set by either a JSON field or a command line argument
+        for(Field field : federateParameterFields) {
+            if(!federateParameter.fieldsSet.contains(field.getName())) {
+                logger.warn("No config parameter was provided for \"{}\" (type: \"{}\"). Default value set by runtime environment...",
+                        field.getName(), field.getType());
+            }
+        }
+
         return federateParameter;
     }
 
@@ -230,26 +243,24 @@ public class FederateConfigParser {
     private Options getClassCLIOptions(Class<? extends FederateConfig> configClass) {
         Options options = new Options();
 
-        Field[] fields = configClass.getFields();
+        Set<Field> fields = FederateConfig.getFederateParameterFields(configClass);
 
         for (Field field : fields) {
-            if (field.getAnnotation(FederateParameter.class) != null) {
-                String fieldName = field.getName();
-                Class<?> fieldType = field.getType();
+            String fieldName = field.getName();
+            Class<?> fieldType = field.getType();
 
-                if (fieldType.isPrimitive()) {
-                    fieldType = ClassUtils.primitiveToWrapper(fieldType);
-                }
-
-                options.addOption(Option.builder()
-                        .longOpt(fieldName)
-                        .argName(fieldName)
-                        .hasArg()
-                        .required(false)
-                        .type(fieldType)
-                        .build()
-                );
+            if (fieldType.isPrimitive()) {
+                fieldType = ClassUtils.primitiveToWrapper(fieldType);
             }
+
+            options.addOption(Option.builder()
+                    .longOpt(fieldName)
+                    .argName(fieldName)
+                    .hasArg()
+                    .required(false)
+                    .type(fieldType)
+                    .build()
+            );
         }
 
         return options;

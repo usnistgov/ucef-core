@@ -111,6 +111,8 @@ public class SynchronizedFederate extends NullFederateAmbassador {
     private boolean _advanceTimeThreadNotStarted = true;
     private ReceivedInteraction _receivedSimEnd = null;
 
+    protected boolean exitCondition = false;	// set to true when SimEnd is received
+
     /**
      * General federate parameters
      */
@@ -278,9 +280,9 @@ public class SynchronizedFederate extends NullFederateAmbassador {
             FederateJoinInteraction joinInteraction = new FederateJoinInteraction();
             joinInteraction.set_sourceFed(this.federateId);
             joinInteraction.set_originFed(this.federateId);
-            joinInteraction.setFederateId(this.federateId);
-            joinInteraction.setFederateType(this.federateType);
-            joinInteraction.setLateJoiner(this.isLateJoiner);
+            joinInteraction.set_FederateId(this.federateId);
+            joinInteraction.set_FederateType(this.federateType);
+            joinInteraction.set_IsLateJoiner(this.isLateJoiner);
 
             try {
                 logger.trace("Sending FederateJoinInteraction for federate {}", this.federateId);
@@ -297,9 +299,9 @@ public class SynchronizedFederate extends NullFederateAmbassador {
             FederateResignInteraction resignInteraction = new FederateResignInteraction();
             resignInteraction.set_sourceFed(this.federateId);
             resignInteraction.set_originFed(this.federateId);
-            resignInteraction.setFederateId(this.federateId);
-            resignInteraction.setFederateType(this.federateType);
-            resignInteraction.setLateJoiner(this.isLateJoiner);
+            resignInteraction.set_FederateId(this.federateId);
+            resignInteraction.set_FederateType(this.federateType);
+            resignInteraction.set_IsLateJoiner(this.isLateJoiner);
 
             try {
                 logger.trace("Sending FederateResignInteraction for federate {}", this.federateId);
@@ -631,6 +633,7 @@ public class SynchronizedFederate extends NullFederateAmbassador {
     }
 
     private void achieveSynchronizationPoint(String label) throws FederateNotExecutionMember, RTIinternalError {
+        logger.trace("achieveSynchronizationPoint==>");
         boolean synchronizationPointNotAccepted = true;
         while (synchronizationPointNotAccepted) {
             try {
@@ -640,7 +643,7 @@ public class SynchronizedFederate extends NullFederateAmbassador {
                 while (!_achievedSynchronizationPoints.contains(label)) {
                     CpswtUtils.sleep(SynchronizedFederate.internalThreadWaitTimeMs);
                     synchronized (lrc) {
-                        lrc.tick();
+                         lrc.tick();
                     }
                 }
                 synchronizationPointNotAccepted = false;
@@ -664,6 +667,7 @@ public class SynchronizedFederate extends NullFederateAmbassador {
                 CpswtUtils.sleep(SynchronizedFederate.internalThreadWaitTimeMs);
             }
         }
+        logger.trace("<==achieveSynchronizationPoint");
     }
 
     /**
@@ -956,11 +960,12 @@ public class SynchronizedFederate extends NullFederateAmbassador {
     }
 
     public final void receiveInteractionSF(int interactionClass, ReceivedInteraction theInteraction, byte[] userSuppliedTag) {
+        logger.trace("SynchronizedFederate::receiveInteractionSF (no time): Received interactionClass as: {} and interaction as: {}", interactionClass, theInteraction);
+
         // Himanshu: We normally use only TSO updates, so this shouldn't be
         // called, but due to an RTI bug, it seemingly is getting called. So,
         // for now, use the federate's current time or LBTS whichever is greater
         // as the timestamp
-
         DoubleTime assumedTimestamp = new DoubleTime();
         if (getLBTS() >= getCurrentTime()) {
             assumedTimestamp.setTime(getLBTS());
@@ -969,6 +974,8 @@ public class SynchronizedFederate extends NullFederateAmbassador {
         }
 
         InteractionRoot ir = InteractionRoot.create_interaction(interactionClass, theInteraction);
+        logger.trace("SynchronizedFederate::receiveInteractionSF (no time): Created interaction root as: {}", ir);
+
         if (!unmatchingFedFilterProvided(ir)) {
             if(SimEnd.match(interactionClass)) {
                 _receivedSimEnd = theInteraction;
@@ -1016,7 +1023,10 @@ public class SynchronizedFederate extends NullFederateAmbassador {
             LogicalTime theTime,
             EventRetractionHandle retractionHandle
     ) {
+        logger.trace("SynchronizedFederate::receiveInteractionSF (with time): Received interactionClass as: {} and interaction as: {}", interactionClass, theInteraction);
+
         InteractionRoot ir = InteractionRoot.create_interaction(interactionClass, theInteraction, theTime);
+        logger.trace("SynchronizedFederate::receiveInteractionSF (with time): Created interaction root as: {}", ir);
         if (!unmatchingFedFilterProvided(ir)) {
             if(SimEnd.match(interactionClass)) {
                 _receivedSimEnd = theInteraction;
@@ -1036,27 +1046,9 @@ public class SynchronizedFederate extends NullFederateAmbassador {
     protected void handleIfSimEnd(int interactionClass, ReceivedInteraction theInteraction, LogicalTime theTime) {
         if (SimEnd.match(interactionClass)) {
             logger.info("{}: SimEnd interaction received, exiting...", getFederateId());
-            try {
-                // getLRC().tick();
-                getLRC().resignFederationExecution(ResignAction.DELETE_OBJECTS);
-            } catch (Exception e) {
-                logger.error("Error during resigning federate: {}", getFederateId());
-                logger.error(e.getMessage());
-            }
 
-            // Wait for 10 seconds for Federation Manager to recognize that the federate has resigned.
-            try {
-                Thread.sleep(CpswtDefaults.SimEndWaitingTimeMillis);
-            } catch (Exception e) {
-                logger.error(e.getMessage());
-            }
-
-            // TODO: CONSIDER SETTING UP A SHUTDOWN HOOK
-            // this one will terminate the JVM not only the current process
-            Runtime.getRuntime().exit(0);
-
-            // Exit
-            System.exit(0);
+            // this one will set flag allowing foreground federate to gracefully shut down
+            exitCondition = true;
         }
     }
 
@@ -1315,5 +1307,27 @@ public class SynchronizedFederate extends NullFederateAmbassador {
         for (FederateStateChangeListener listener : this.federateChangeEventListeners) {
             listener.federateStateChanged(e);
         }
+    }
+    
+    /**
+     * Processes graceful shut-down of hla federate
+     *
+     * @return void
+     */
+    public void exitGracefully()
+    {
+        logger.info("Exiting gracefully ....");
+
+        // notify FederationManager about resign
+        notifyFederationOfResign();
+
+        // Wait for 10 seconds for Federation Manager to recognize that the federate has resigned.
+        try {
+            Thread.sleep(CpswtDefaults.SimEndWaitingTimeMillis);
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+
+        resignFederationExecution(ResignAction.DELETE_OBJECTS);
     }
 }

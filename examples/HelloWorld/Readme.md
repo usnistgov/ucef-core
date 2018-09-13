@@ -11,7 +11,7 @@ This folder is the result of the `Federates Exporter` with the following variabl
 ```
     version = 0.0.1
     groupId = org.c2wt.example
-    org.cpswt version = 0.5.0-SNAPSHOT
+    org.cpswt version = 0.6.0-SNAPSHOT
     archiva repo base url = http://cpswtng_archiva:8080
 ```
 
@@ -28,6 +28,6 @@ This folder is the result of the `Deployment Exporter` with the following variab
 ```
     version = 0.0.1
     groupId = org.c2wt.example
-    org.cpswt version = 0.5.0-SNAPSHOT
+    org.cpswt version = 0.6.0-SNAPSHOT
     archiva repo base url = http://cpswtng_archiva:8080
 ```

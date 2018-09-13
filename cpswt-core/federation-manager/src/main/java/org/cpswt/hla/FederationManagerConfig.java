@@ -52,12 +52,4 @@ public class FederationManagerConfig extends FederateConfig {
     @FederateParameter
     public String experimentConfig;
 
-    /**
-     * Indicates if the manager should terminate on COA finish.
-     */
-    @Deprecated
-    @FederateParameter
-    // TODO: move COA-related stuff from script.xml to COA.json
-    public boolean terminateOnCOAFinish;
-
 }

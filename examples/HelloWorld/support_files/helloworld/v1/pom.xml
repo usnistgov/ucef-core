@@ -9,7 +9,7 @@
     <properties>
         <federation.name>HelloWorld_Java_Tutorial</federation.name>
         <federation.version>0.0.1-SNAPSHOT</federation.version>
-        <org.cpswt.version>0.5.0-SNAPSHOT</org.cpswt.version>
+        <org.cpswt.version>0.6.0-SNAPSHOT</org.cpswt.version>
         <nar.version>3.3.0</nar.version>
         <maven.repository.url>http://cpswtng_archiva:8080/repository</maven.repository.url>
     </properties>
@@ -104,8 +104,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.5.1</version>
                 <configuration>
-                    <source>1.5</source>
-                    <target>1.5</target>
+                    <source>1.8</source>
+                    <target>1.8</target>
                 </configuration>
             </plugin>
             <plugin>

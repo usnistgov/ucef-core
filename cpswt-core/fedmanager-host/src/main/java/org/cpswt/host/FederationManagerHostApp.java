@@ -70,7 +70,7 @@ public class FederationManagerHostApp extends AllDirectives {
         try {
             this.federationManager = new FederationManager(this.federationManagerConfig);
         } catch (Exception e) {
-            logger.error("Error while initializing FederationManager!" + e.getMessage());
+            logger.error("Error while initializing FederationManager! " + e.getMessage());
             logger.error(e);
         }
     }
@@ -121,19 +121,23 @@ public class FederationManagerHostApp extends AllDirectives {
                                         try {
                                             switch (action) {
                                                 case START:
-                                                    response = new StateChangeResponse(currentState, FederateState.STARTING);
+                                                    logger.debug("Starting simulation");
+                                                   response = new StateChangeResponse(currentState, FederateState.STARTING);
                                                     this.startSimulationAsync();
                                                     break;
                                                 case PAUSE:
-                                                    this.federationManager.pauseSimulation();
+                                                    logger.debug("Pause simulation");
+                                                  this.federationManager.pauseSimulation();
                                                     response = new StateChangeResponse(currentState, federationManager.getFederateState());
                                                     break;
                                                 case RESUME:
-                                                    this.federationManager.resumeSimulation();
+                                                    logger.debug("Resume simulation");
+                                                   this.federationManager.resumeSimulation();
                                                     response = new StateChangeResponse(currentState, federationManager.getFederateState());
                                                     break;
                                                 case TERMINATE:
-                                                    response = new StateChangeResponse(federationManager.getFederateState(), FederateState.TERMINATING);
+                                                    logger.debug("Terminate simulation");
+                                                  response = new StateChangeResponse(federationManager.getFederateState(), FederateState.TERMINATING);
                                                     this.terminateSimulationAsync();
                                                     break;
                                             }
@@ -188,12 +192,10 @@ public class FederationManagerHostApp extends AllDirectives {
 
         final Http http = Http.get(system);
         final ActorMaterializer materializer = ActorMaterializer.create(system);
-
-        FederationManagerHostApp app = new FederationManagerHostApp();
-        app.parseConfig(args);
+       FederationManagerHostApp app = new FederationManagerHostApp();
+       app.parseConfig(args);
 
         app.initFederationManager();
-
         final Flow<HttpRequest, HttpResponse, NotUsed> routeFlow = app.createRoute().flow(system, materializer);
         final CompletionStage<ServerBinding> binding = http.bindAndHandle(routeFlow,
                 ConnectHttp.toHost(app.getBindingAddress(), app.getPort()), materializer);

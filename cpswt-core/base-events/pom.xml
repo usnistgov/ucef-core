@@ -5,7 +5,7 @@
         <groupId>org.cpswt</groupId>
         <artifactId>cpswt-core</artifactId>
         <relativePath>../pom.xml</relativePath>
-        <version>0.5.0-SNAPSHOT</version>
+        <version>0.6.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>base-events</artifactId>
@@ -14,7 +14,7 @@
         <dependency>
             <groupId>org.cpswt</groupId>
             <artifactId>root</artifactId>
-            <version>0.5.0-SNAPSHOT</version>
+            <version>0.6.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
 

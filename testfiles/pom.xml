@@ -10,7 +10,7 @@
     <properties>
         <federation.name>EchoExample</federation.name>
         <federation.version>1.0.0-SNAPSHOT</federation.version>
-        <org.cpswt.version>0.5.0-SNAPSHOT</org.cpswt.version>
+        <org.cpswt.version>0.6.0-SNAPSHOT</org.cpswt.version>
         <maven.repository.url>http://cpswtng_archiva:8080/repository</maven.repository.url>
     </properties>
 
@@ -18,7 +18,7 @@
         <dependency>
             <groupId>org.cpswt</groupId>
             <artifactId>fedmanager-host</artifactId>
-            <version>0.5.0-SNAPSHOT</version>
+            <version>0.6.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.cpswt.examples</groupId>

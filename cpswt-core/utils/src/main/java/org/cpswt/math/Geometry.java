@@ -28,7 +28,7 @@ import java.io.FileReader;
 import java.util.Random;
 import java.util.StringTokenizer;
 
-import org.cpswt.util.RandomSingleton;
+import org.cpswt.utils.RandomSingleton;
 
 //import Jama.Matrix;
 

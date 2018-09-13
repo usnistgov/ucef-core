@@ -13,7 +13,6 @@
 
   "federationEndTime": 20.0,
   "realTimeMode": true,
-  "terminateOnCOAFinish": false,
   "fedFile": "EchoExample.fed",
   "experimentConfig": "experimentConfig.json"
 

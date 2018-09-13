@@ -1,16 +1,20 @@
 package org.cpswt.config;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import org.apache.commons.cli.*;
-
-import org.apache.commons.lang3.ClassUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.lang.reflect.Field;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Represents the parameter object for a federate.
  */
 public class FederateConfig {
+
+    @JsonIgnore
+    final Set<String> fieldsSet = new HashSet<>();
 
     @JsonIgnore
     static final Logger logger = LogManager.getLogger(FederateConfig.class);
@@ -53,8 +57,10 @@ public class FederateConfig {
 
     /**
      * Optional 'name' parameter that will be acquired as 'id'
+     * Use {@link FederateParameterOptional} to exclude the field from "isSet" check
      */
     @FederateParameter
+    @FederateParameterOptional
     public String name;
 
     /**
@@ -76,5 +82,34 @@ public class FederateConfig {
         this.isLateJoiner = isLateJoiner;
         this.lookAhead = lookAhead;
         this.stepSize = stepSize;
+    }
+
+    @JsonIgnore
+    public static Set<Field> getFederateParameterFields(Class<? extends  FederateConfig> configClass) {
+        Set<Field> fieldSet = new HashSet<>();
+        Field[] fields = configClass.getFields();
+
+        for (Field field : fields) {
+            if (field.getAnnotation(FederateParameter.class) != null) {
+                fieldSet.add(field);
+            }
+        }
+
+        return fieldSet;
+    }
+
+    @JsonIgnore
+    public static Set<Field> getMandatoryFederateParameterFields(Class<? extends  FederateConfig> configClass) {
+        Set<Field> fieldSet = new HashSet<>();
+        Field[] fields = configClass.getFields();
+
+        for (Field field : fields) {
+            if (field.getAnnotation(FederateParameter.class) != null
+                    && field.getAnnotation(FederateParameterOptional.class) == null) {
+                fieldSet.add(field);
+            }
+        }
+
+        return fieldSet;
     }
 }
