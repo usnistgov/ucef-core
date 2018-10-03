@@ -980,7 +980,7 @@ public class SynchronizedFederate extends NullFederateAmbassador {
             if(SimEnd.match(interactionClass)) {
                 _receivedSimEnd = theInteraction;
             }
-            // handleIfSimEnd(interactionClass, theInteraction, assumedTimestamp);
+            handleIfSimEnd(interactionClass, theInteraction, assumedTimestamp);
             addInteraction(ir);
             // createLog(interactionClass, theInteraction, assumedTimestamp);
         }
@@ -1031,7 +1031,7 @@ public class SynchronizedFederate extends NullFederateAmbassador {
             if(SimEnd.match(interactionClass)) {
                 _receivedSimEnd = theInteraction;
             }
-            // handleIfSimEnd(interactionClass, theInteraction, theTime);
+            handleIfSimEnd(interactionClass, theInteraction, theTime);
             addInteraction(ir);
             // createLog(interactionClass, theInteraction, theTime);
         }

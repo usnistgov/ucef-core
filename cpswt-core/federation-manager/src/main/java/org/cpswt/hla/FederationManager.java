@@ -732,6 +732,14 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
             }
         }
 
+        // waiot for federates to resign
+        try {
+			waitForFederatesToResign();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        
         running = false;
         paused = false;
 
@@ -740,6 +748,8 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
 
         logger.info("Simulation terminated");
 
+        
+        
         this.setFederateState(FederateState.TERMINATED);
 
         // Wait for 10 seconds for Simulation to gracefully exit
