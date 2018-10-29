@@ -42,6 +42,7 @@ import java.util.concurrent.PriorityBlockingQueue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.cpswt.config.FederateConfig;
+import org.portico.impl.hla13.Rti13Ambassador;
 import org.portico.impl.hla13.types.DoubleTime;
 import org.portico.impl.hla13.types.DoubleTimeInterval;
 
@@ -230,6 +231,10 @@ public class SynchronizedFederate extends NullFederateAmbassador {
      */
     public void destroyRTI() {
         lrc = null;
+    }
+
+    public void stopRTI() {
+        ((Rti13Ambassador)lrc).getHelper().getLrc().stopLrc();
     }
 
     /**
@@ -440,7 +445,7 @@ public class SynchronizedFederate extends NullFederateAmbassador {
      * its federation.
      */
     public void disableTimeRegulation()
-            throws InvalidFederationTime, RTIinternalError , FederateNotExecutionMember {
+            throws RTIinternalError , FederateNotExecutionMember {
 
         if (_timeRegulationNotEnabled) return;
 
@@ -1308,26 +1313,28 @@ public class SynchronizedFederate extends NullFederateAmbassador {
             listener.federateStateChanged(e);
         }
     }
-    
-    /**
-     * Processes graceful shut-down of hla federate
-     *
-     * @return void
-     */
-    public void exitGracefully()
+
+    public void exitGracefully() throws RTIinternalError, FederateNotExecutionMember
     {
         logger.info("Exiting gracefully ....");
 
-        // notify FederationManager about resign
+        // no longer active in time management
+        disableTimeRegulation();
+        
+        if(_receivedSimEnd != null) {
+            readyToResign(); // synchronize
+        }
+        
         notifyFederationOfResign();
-
-        // Wait for 10 seconds for Federation Manager to recognize that the federate has resigned.
+        
         try {
+            // wait for all outbound messages to reach the federation manager
             Thread.sleep(CpswtDefaults.SimEndWaitingTimeMillis);
         } catch (Exception e) {
             logger.error(e.getMessage());
         }
-
+        
         resignFederationExecution(ResignAction.DELETE_OBJECTS);
+        stopRTI();
     }
 }

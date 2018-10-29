@@ -83,11 +83,6 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
     */
 
     /**
-     * Indicates whether the FederationManager should create synchronization points.
-     */
-    private boolean useSyncPoints = true;
-
-    /**
      * The name of the Federation.
      */
     private String federationId;
@@ -292,9 +287,7 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
         }
 
         if(this.federatesMaintainer.expectedFederatesLeftToJoinCount() == 0) {
-            // there are no expected federates --> no need for synchronization points
-            this.useSyncPoints = false;
-            logger.debug("No expected federates are defined, not setting up synchronization points.");
+            logger.debug("No expected federates are defined");
         }
 
         this.initializeLRC(fedFileURL);
@@ -387,34 +380,32 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
 
         super.enableAsynchronousDelivery();
 
-        if (useSyncPoints) {
-            logger.trace("Registering synchronization point: {}", SynchronizationPoints.ReadyToPopulate);
-            super.lrc.registerFederationSynchronizationPoint(SynchronizationPoints.ReadyToPopulate, null);
+        logger.trace("Registering synchronization point: {}", SynchronizationPoints.ReadyToPopulate);
+        super.lrc.registerFederationSynchronizationPoint(SynchronizationPoints.ReadyToPopulate, null);
+        super.lrc.tick();
+        while (!_synchronizationLabels.contains(SynchronizationPoints.ReadyToPopulate)) {
+            CpswtUtils.sleep(SynchronizedFederate.internalThreadWaitTimeMs);
             super.lrc.tick();
-            while (!_synchronizationLabels.contains(SynchronizationPoints.ReadyToPopulate)) {
-                CpswtUtils.sleep(SynchronizedFederate.internalThreadWaitTimeMs);
-                super.lrc.tick();
-            }
-            logger.debug("Synchronization point \"{}\" registered successfully.", SynchronizationPoints.ReadyToPopulate);
-
-            logger.trace("Registering synchronization point: {}", SynchronizationPoints.ReadyToRun);
-            super.lrc.registerFederationSynchronizationPoint(SynchronizationPoints.ReadyToRun, null);
-            super.lrc.tick();
-            while (!_synchronizationLabels.contains(SynchronizationPoints.ReadyToRun)) {
-                CpswtUtils.sleep(SynchronizedFederate.internalThreadWaitTimeMs);
-                super.lrc.tick();
-            }
-            logger.debug("Synchronization point \"{}\" registered successfully.", SynchronizationPoints.ReadyToRun);
-
-            logger.trace("Registering synchronization point: {}", SynchronizationPoints.ReadyToResign);
-            super.lrc.registerFederationSynchronizationPoint(SynchronizationPoints.ReadyToResign, null);
-            super.lrc.tick();
-            while (!_synchronizationLabels.contains(SynchronizationPoints.ReadyToResign)) {
-                CpswtUtils.sleep(SynchronizedFederate.internalThreadWaitTimeMs);
-                super.lrc.tick();
-            }
-            logger.debug("Synchronization point \"{}\" registered successfully.", SynchronizationPoints.ReadyToResign);
         }
+        logger.debug("Synchronization point \"{}\" registered successfully.", SynchronizationPoints.ReadyToPopulate);
+
+        logger.trace("Registering synchronization point: {}", SynchronizationPoints.ReadyToRun);
+        super.lrc.registerFederationSynchronizationPoint(SynchronizationPoints.ReadyToRun, null);
+        super.lrc.tick();
+        while (!_synchronizationLabels.contains(SynchronizationPoints.ReadyToRun)) {
+            CpswtUtils.sleep(SynchronizedFederate.internalThreadWaitTimeMs);
+            super.lrc.tick();
+        }
+        logger.debug("Synchronization point \"{}\" registered successfully.", SynchronizationPoints.ReadyToRun);
+
+        logger.trace("Registering synchronization point: {}", SynchronizationPoints.ReadyToResign);
+        super.lrc.registerFederationSynchronizationPoint(SynchronizationPoints.ReadyToResign, null);
+        super.lrc.tick();
+        while (!_synchronizationLabels.contains(SynchronizationPoints.ReadyToResign)) {
+            CpswtUtils.sleep(SynchronizedFederate.internalThreadWaitTimeMs);
+            super.lrc.tick();
+        }
+        logger.debug("Synchronization point \"{}\" registered successfully.", SynchronizationPoints.ReadyToResign);
 
         // subscribe for "join" and "resign" interactions
         FederateJoinInteraction.subscribe(super.getLRC());
@@ -438,15 +429,13 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
 
         waitExpectedFederatesToJoin();
 
-        if (useSyncPoints) {
-            logger.trace("Waiting for \"{}\"...", SynchronizationPoints.ReadyToPopulate);
-            super.readyToPopulate();
-            logger.trace("{} done.", SynchronizationPoints.ReadyToPopulate);
+        logger.trace("Waiting for \"{}\"...", SynchronizationPoints.ReadyToPopulate);
+        super.readyToPopulate();
+        logger.trace("{} done.", SynchronizationPoints.ReadyToPopulate);
 
-            logger.trace("Waiting for \"{}\"...", SynchronizationPoints.ReadyToRun);
-            super.readyToRun();
-            logger.trace("{} done.", SynchronizationPoints.ReadyToRun);
-        }
+        logger.trace("Waiting for \"{}\"...", SynchronizationPoints.ReadyToRun);
+        super.readyToRun();
+        logger.trace("{} done.", SynchronizationPoints.ReadyToRun);
 
         _federationEventsHandler.handleEvent(IC2WFederationEventsHandler.C2W_FEDERATION_EVENTS.FEDERATION_READY_TO_RUN, federationId);
 
@@ -517,7 +506,7 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
                                 granted = false;
                                 int numTicks = 0;
                                 boolean stuckWhileWaiting = false;
-                                while (!granted && running) {
+                                while (!granted) {
                                     getLRC().tick();
                                 }
                                 numTicks = 0;
@@ -546,34 +535,30 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
 
                         // If we have reached federation end time (if it was configured), terminate the federation
                         if (_federationEndTime > 0 && time.getTime() > _federationEndTime) {
-                            _federationEventsHandler.handleEvent(IC2WFederationEventsHandler.C2W_FEDERATION_EVENTS.FEDERATION_SIMULATION_FINISHED, federationId);
                             terminateSimulation();
                         }
 
                     }
+                    
+                    try {
+                        // wait for all federates to resign; this must be longer than the exitGracefully delay!
+                        Thread.sleep(CpswtDefaults.SimEndWaitingTimeMillis);
+                    } catch (Exception e) {
+                        logger.error(e.getMessage());
+                    }
+                    
+                    logger.info("Simulation terminated");
+                    setFederateState(FederateState.TERMINATED);
                     _federationEventsHandler.handleEvent(IC2WFederationEventsHandler.C2W_FEDERATION_EVENTS.FEDERATION_SIMULATION_FINISHED, federationId);
-                    prepareForFederatesToResign();
-
-                    if(useSyncPoints) {
-                        logger.info("Waiting for \"ReadyToResign\" ... ");
-                        readyToResign();
-                        logger.info("Done with resign");
-                    }
-
-                    waitForFederatesToResign();
-
-                    while(getFederateState() != FederateState.TERMINATED) {
-                        CpswtUtils.sleepDefault();
-                    }
 
                     // destroy federation
                     getLRC().resignFederationExecution(ResignAction.DELETE_OBJECTS);
                     getLRC().destroyFederationExecution(federationId);
-                    destroyRTI();
+                    stopRTI();
                     logLevel = 0;
 
-                    // In case some federate is still hanging around
-                    killEntireFederation();
+                    recordMainExecutionLoopEndTime();
+                    System.exit(0);
                 } catch (Exception e) {
                     logger.error(e.getMessage());
                 }
@@ -607,21 +592,6 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
             }
         }
         logger.debug("All expected federates have joined the federation. Proceeding with the simulation...");
-    }
-
-    private void prepareForFederatesToResign() throws Exception {
-
-        for (FederateInfo federateInfo : this.federatesMaintainer.getOnlineExpectedFederates()) {
-            logger.info("Waiting for \"{}\" federate to resign ...", federateInfo.getFederateId());
-        }
-    }
-
-    private void waitForFederatesToResign() throws Exception {
-        while (this.federatesMaintainer.getOnlineExpectedFederates().size() != 0) {
-//            getLRC().tick();
-            CpswtUtils.sleep(SynchronizedFederate.internalThreadWaitTimeMs);
-        }
-        logger.info("All federates have resigned the federation.  Simulation terminated.\n");
     }
 
     private void sendScriptInteractions() {
@@ -714,47 +684,34 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
     }
 
     public void terminateSimulation() {
-
+        if (this.getFederateState() == FederateState.TERMINATING) {
+            return; // termination already started
+        }
         logger.debug("Terminating simulation");
-       _killingFederation = true;
-        recordMainExecutionLoopEndTime();
         this.setFederateState(FederateState.TERMINATING);
 
         synchronized (super.lrc) {
             try {
-                SimEnd e = new SimEnd();
-                e.set_originFed(getFederateId());
-                e.set_sourceFed(getFederateId());
-                double tmin = time.getTime() + super.getLookAhead();
-                e.sendInteraction(getLRC(), tmin);
-            } catch (Exception e) {
-                e.printStackTrace();
+                SimEnd simEnd = new SimEnd();
+                simEnd.set_originFed(getFederateId());
+                simEnd.set_sourceFed(getFederateId());
+                simEnd.sendInteraction(getLRC(), time.getTime() + super.getLookAhead());
+                
+                lrc.synchronizationPointAchieved(SynchronizationPoints.ReadyToResign);
+            } catch (RTIexception e) { // this needs better exception handling
+                logger.fatal(e);
+                System.exit(1);
             }
         }
-
-        running = false;
-        paused = false;
-
-        // Wait for 2 seconds for SimEnd to reach others
-        CpswtUtils.sleep(CpswtDefaults.SimEndWaitingTimeMillis);
-
-        logger.info("Simulation terminated");
-
-        this.setFederateState(FederateState.TERMINATED);
-
-        // Wait for 10 seconds for Simulation to gracefully exit
-        CpswtUtils.sleep(2000);
-
-        // If simulation has still not exited gracefully, run kill command
-        killEntireFederation();
     }
-
-    public void killEntireFederation() {
-        _killingFederation = true;
-
-        recordMainExecutionLoopEndTime();
-
-        System.exit(0);
+    
+    @Override
+    public void federationSynchronized(String label) {
+        super.federationSynchronized(label);
+        
+        if (label.equals(SynchronizationPoints.ReadyToResign)) {
+            running = false; // exit main loop when able
+        }
     }
 
     public void setRealTimeMode(boolean newRealTimeMode) {
