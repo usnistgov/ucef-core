@@ -487,7 +487,16 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
                         }
 
                         if (!paused) {
+                            double thisLogicalTime = time.getTime(); // time.getTime() will change during this iteration
+
+                            if (numStepsExecuted == 10) {
+                                logger.info("Federation manager current time = {}", thisLogicalTime);
+                                numStepsExecuted = 0;
+                            }
+
                             synchronized (getLRC()) {
+                                DoubleTime next_time = new DoubleTime(thisLogicalTime + step);
+                                logger.debug("Current_time = {} and step = {} and requested_time = {}", thisLogicalTime, step, next_time.getTime());
 
                                 sendScriptInteractions();
 
@@ -495,8 +504,6 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
                                    coaExecutor.executeCOAGraph();
                                 }
 
-                                DoubleTime next_time = new DoubleTime(time.getTime() + step);
-                                logger.debug("Current_time = {} and step = {} and requested_time = {}", time.getTime(), step, next_time.getTime());
                                 getLRC().timeAdvanceRequest(next_time);
                                 if (realTimeMode) {
                                     time_diff = time_in_millisec - System.currentTimeMillis();
@@ -504,41 +511,31 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
 
                                 // wait for grant
                                 granted = false;
-                                int numTicks = 0;
-                                boolean stuckWhileWaiting = false;
                                 while (!granted) {
                                     getLRC().tick();
                                 }
-                                numTicks = 0;
-
+                                // time.getTime() has now changed values
                                 numStepsExecuted++;
+                            }
 
-
-                                // if we passed next pause time go to pause mode
-                                Iterator<Double> it = pauseTimes.iterator();
-                                if (it.hasNext()) {
-                                    double pause_time = it.next();
-                                    if (time.getTime() > pause_time) {
-                                        it.remove();
-                                        pauseSimulation();
-                                    }
+                            // check if the federation should pause
+                            Iterator<Double> it = pauseTimes.iterator();
+                            if (it.hasNext()) {
+                                double pause_time = it.next();
+                                if (thisLogicalTime >= pause_time) {
+                                    it.remove();
+                                    pauseSimulation();
                                 }
                             }
 
-                            if (numStepsExecuted == 10) {
-                                logger.info("Federation manager current time = {}", time.getTime());
-                                numStepsExecuted = 0;
+                            // If we have reached federation end time (if it was configured), terminate the federation
+                            if (_federationEndTime > 0 && thisLogicalTime >= _federationEndTime) {
+                                logger.info("Reached federation end time at t = {}", thisLogicalTime);
+                                terminateSimulation();
                             }
                         } else {
                             CpswtUtils.sleep(10);
                         }
-
-                        // If we have reached federation end time (if it was configured), terminate the federation
-                        if (_federationEndTime > 0 && time.getTime() >= _federationEndTime) {
-                            logger.info("Reached federation end time at t = {}", time.getTime());
-                            terminateSimulation();
-                        }
-
                     }
                     
                     try {
