@@ -496,7 +496,7 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
                                 }
 
                                 DoubleTime next_time = new DoubleTime(time.getTime() + step);
-                                logger.info("Current_time = {} and step = {} and requested_time = {}", time.getTime(), step, next_time.getTime());
+                                logger.debug("Current_time = {} and step = {} and requested_time = {}", time.getTime(), step, next_time.getTime());
                                 getLRC().timeAdvanceRequest(next_time);
                                 if (realTimeMode) {
                                     time_diff = time_in_millisec - System.currentTimeMillis();
@@ -534,7 +534,8 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
                         }
 
                         // If we have reached federation end time (if it was configured), terminate the federation
-                        if (_federationEndTime > 0 && time.getTime() > _federationEndTime) {
+                        if (_federationEndTime > 0 && time.getTime() >= _federationEndTime) {
+                            logger.info("Reached federation end time at t = {}", time.getTime());
                             terminateSimulation();
                         }
 
@@ -698,6 +699,7 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
                 simEnd.sendInteraction(getLRC(), time.getTime() + super.getLookAhead());
                 
                 lrc.synchronizationPointAchieved(SynchronizationPoints.ReadyToResign);
+                lrc.tick(); // check if federation already synchronized
             } catch (RTIexception e) { // this needs better exception handling
                 logger.fatal(e);
                 System.exit(1);
