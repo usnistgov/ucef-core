@@ -117,12 +117,12 @@ public class FederationManagerHostApp extends AllDirectives {
 
                                     StateChangeResponse response = null;
 
-                                    if (currentState.CanTransitionTo(targetState)) {
+                                    if (currentState.canTransitionTo(targetState)) {
                                         try {
                                             switch (action) {
                                                 case START:
                                                     logger.debug("Starting simulation");
-                                                   response = new StateChangeResponse(currentState, FederateState.STARTING);
+                                                    response = new StateChangeResponse(currentState, FederateState.INITIALIZED);
                                                     this.startSimulationAsync();
                                                     break;
                                                 case PAUSE:
@@ -141,9 +141,6 @@ public class FederationManagerHostApp extends AllDirectives {
                                                     this.terminateSimulationAsync();
                                                     break;
                                             }
-                                        } catch (IOException ioEx) {
-                                            logger.error("Closing ChunkedOutput encountered a problem.");
-                                            logger.error(ioEx);
                                         } catch (Exception ex) {
                                             logger.error("There was an error while trying to transition FederationManager for action {}", action);
                                             logger.error(ex);

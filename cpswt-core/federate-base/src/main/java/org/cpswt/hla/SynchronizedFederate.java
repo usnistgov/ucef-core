@@ -158,24 +158,26 @@ public class SynchronizedFederate extends NullFederateAmbassador {
 
     // -----------------------------------------------------------------------------------------------------------------
 
-    protected FederateState federateState = FederateState.INITIALIZING;
+    private FederateState federateState = FederateState.INITIALIZING;
+
     public FederateState getFederateState() {
-        return this.federateState;
-    }
-    public boolean setFederateState(FederateState newState) {
-
-        // TODO: add Mutex
-
-        if(this.federateState.CanTransitionTo(newState)) {
-            FederateState prevState = this.federateState;
-            this.federateState = newState;
-
-            // fire FederateStateChanged event - notify listeners
-            this.fireFederateStateChanged(prevState, newState);
-
-            return true;
+        synchronized (federateState) {
+            return federateState;
         }
-        return false;
+    }
+    
+    public boolean setFederateState(FederateState newState) {
+        synchronized (federateState) {
+            boolean isValidTransition = federateState.canTransitionTo(newState);
+            
+            if (isValidTransition) {
+                FederateState oldState = federateState;
+                federateState = newState;
+                fireFederateStateChanged(oldState, newState);
+            }
+            
+            return isValidTransition;
+        }
     }
 
     /**
@@ -634,7 +636,6 @@ public class SynchronizedFederate extends NullFederateAmbassador {
      */
     public void readyToResign() throws FederateNotExecutionMember, RTIinternalError {
         achieveSynchronizationPoint(SynchronizationPoints.ReadyToResign);
-        this.setFederateState(FederateState.TERMINATING);
     }
 
     private void achieveSynchronizationPoint(String label) throws FederateNotExecutionMember, RTIinternalError {
@@ -1329,6 +1330,7 @@ public class SynchronizedFederate extends NullFederateAmbassador {
         
         try {
             // wait for all outbound messages to reach the federation manager
+            // the sleep time should probably exceed org.portico.bindings.jgroups.Configuration.RESPONSE_TIMEOUT ?
             Thread.sleep(CpswtDefaults.SimEndWaitingTimeMillis);
         } catch (Exception e) {
             logger.error(e.getMessage());

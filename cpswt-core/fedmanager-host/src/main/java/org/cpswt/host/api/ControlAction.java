@@ -18,15 +18,15 @@ public enum ControlAction {
     public FederateState getTargetState() {
         switch (this) {
             case START:
-                return FederateState.STARTING;
+                return FederateState.INITIALIZED;
             case PAUSE:
                 return FederateState.PAUSED;
             case RESUME:
-                return FederateState.RESUMED;
+                return FederateState.RUNNING;
             case TERMINATE:
                 return FederateState.TERMINATING;
             default:
-                return FederateState.STARTING;
+                return FederateState.INITIALIZED;
         }
     }
 }

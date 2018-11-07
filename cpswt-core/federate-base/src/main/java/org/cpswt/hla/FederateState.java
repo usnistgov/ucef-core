@@ -1,96 +1,91 @@
 package org.cpswt.hla;
 
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public enum FederateState {
     /**
-     * Federate is initializing
+     * The federate is initializing its local variables and has not yet joined a federation.
      */
     INITIALIZING(1),
 
     /**
-     * Federate initialized, but didn't start
+     * The federate has joined a federation and is waiting for other federates to join.
      */
     INITIALIZED(2),
 
     /**
-     * Federate is starting up.
+     * The federate has exchanged initial values with its peers in the federation.
      */
-    STARTING(4),
+    POPULATED(4),
 
     /**
-     * Federate is running after successful startup
+     * The federate is doing its normal operation during logical time progression.
      */
     RUNNING(8),
 
     /**
-     * Federate is paused, after running
+     * The federate is waiting for the federation to resume to a running state.
      */
     PAUSED(16),
 
     /**
-     * Federate is running again after PAUSED state
+     * The federate is doing its shutdown procedure to resign the federation.
      */
-    RESUMED(32),
+    TERMINATING(32),
 
     /**
-     * Federate is terminating (not running anymore) from external termination signal
+     * The federate has resigned from the federation execution.
      */
-    TERMINATING(64),
-
-    /**
-     * Federate finished with terminating (all cleanup code should have finished)
-     */
-    TERMINATED(128),
-
-    /**
-     * Federate not running anymore because run finished
-     */
-    FINISHED(256);
+    TERMINATED(64);
 
     private int value;
+    
+    private static Map<FederateState, Set<FederateState>> allowedTransitions;
+
     FederateState(int value) {
         this.value = value;
     }
-
-    static HashMap<FederateState, HashSet<FederateState>> allowedTransitions;
-    static {
-        allowedTransitions = new HashMap<FederateState, HashSet<FederateState>>();
-
-        allowedTransitions.put(FederateState.INITIALIZING, new HashSet<FederateState>() {{
-            add(FederateState.INITIALIZED);
-        }});
-        allowedTransitions.put(FederateState.INITIALIZED, new HashSet<FederateState>() {{
-            add(FederateState.STARTING);
-            add(FederateState.TERMINATING);
-        }});
-        allowedTransitions.put(FederateState.STARTING, new HashSet<FederateState>() {{
-            add(FederateState.RUNNING);
-            add(FederateState.TERMINATING);
-        }});
-        allowedTransitions.put(FederateState.RUNNING, new HashSet<FederateState>() {{
-            add(FederateState.PAUSED);
-            add(FederateState.TERMINATING);
-            add(FederateState.FINISHED);
-        }});
-        allowedTransitions.put(FederateState.PAUSED, new HashSet<FederateState>() {{
-            add(FederateState.RESUMED);
-            add(FederateState.TERMINATING);
-        }});
-        allowedTransitions.put(FederateState.RESUMED, new HashSet<FederateState>() {{
-            add(FederateState.PAUSED);
-            add(FederateState.TERMINATING);
-            add(FederateState.FINISHED);
-        }});
-        allowedTransitions.put(FederateState.TERMINATING, new HashSet<FederateState>() {{
-            add(FederateState.TERMINATED);
-        }});
-        allowedTransitions.put(FederateState.TERMINATED, new HashSet<FederateState>());
-        allowedTransitions.put(FederateState.FINISHED, new HashSet<FederateState>());
+    
+    public boolean canTransitionTo(FederateState toState) {
+        return allowedTransitions.get(this).contains(toState);
     }
 
-    public boolean CanTransitionTo(FederateState toState) {
-        return allowedTransitions.get(this).contains(toState);
+    static {
+        allowedTransitions = new HashMap<FederateState, Set<FederateState>>();
+
+        allowedTransitions.put(FederateState.INITIALIZING,
+                Stream.of(
+                        FederateState.INITIALIZED
+                ).collect(Collectors.toSet()));
+        allowedTransitions.put(FederateState.INITIALIZED,
+                Stream.of(
+                        FederateState.POPULATED,
+                        FederateState.TERMINATED
+                ).collect(Collectors.toSet()));
+        allowedTransitions.put(FederateState.POPULATED,
+                Stream.of(
+                        FederateState.RUNNING,
+                        FederateState.TERMINATED
+                ).collect(Collectors.toSet()));
+        allowedTransitions.put(FederateState.RUNNING,
+                Stream.of(
+                        FederateState.PAUSED,
+                        FederateState.TERMINATING
+                ).collect(Collectors.toSet()));
+        allowedTransitions.put(FederateState.PAUSED,
+                Stream.of(
+                        FederateState.RUNNING,
+                        FederateState.TERMINATING
+                ).collect(Collectors.toSet()));
+        allowedTransitions.put(FederateState.TERMINATING,
+                Stream.of(
+                        FederateState.TERMINATED
+                ).collect(Collectors.toSet()));
+        allowedTransitions.put(FederateState.TERMINATING, Collections.emptySet());
     }
 }
