@@ -30,6 +30,7 @@ public class FederateJoinInteraction extends C2WInteractionRoot {
     */
     public FederateJoinInteraction() {}
 
+    private static int _FederateHandle_handle;
     private static int _FederateId_handle;
     private static int _FederateType_handle;
     private static int _IsLateJoiner_handle;
@@ -118,14 +119,17 @@ public class FederateJoinInteraction extends C2WInteractionRoot {
         _datamemberClassNameSetMap.put("InteractionRoot.C2WInteractionRoot.FederateJoinInteraction", _datamemberNames);
         _allDatamemberClassNameSetMap.put("InteractionRoot.C2WInteractionRoot.FederateJoinInteraction", _allDatamemberNames);
 
+        _datamemberNames.add("FederateHandle");
         _datamemberNames.add("FederateId");
         _datamemberNames.add("FederateType");
         _datamemberNames.add("IsLateJoiner");
 
+        _datamemberTypeMap.put("FederateHandle", "int");
         _datamemberTypeMap.put("FederateId", "String");
         _datamemberTypeMap.put("FederateType", "String");
         _datamemberTypeMap.put("IsLateJoiner", "boolean");
 
+        _allDatamemberNames.add("FederateHandle");
         _allDatamemberNames.add("FederateId");
         _allDatamemberNames.add("FederateType");
         _allDatamemberNames.add("IsLateJoiner");
@@ -165,6 +169,7 @@ public class FederateJoinInteraction extends C2WInteractionRoot {
         isNotInitialized = true;
         while(isNotInitialized) {
             try {
+                _FederateHandle_handle = rti.getParameterHandle("FederateHandle", get_handle());
                 _FederateId_handle = rti.getParameterHandle("FederateId", get_handle());
                 _FederateType_handle = rti.getParameterHandle("FederateType", get_handle());
                 _IsLateJoiner_handle = rti.getParameterHandle("IsLateJoiner", get_handle());
@@ -188,6 +193,7 @@ public class FederateJoinInteraction extends C2WInteractionRoot {
             }
         }
 
+        _datamemberNameHandleMap.put("InteractionRoot.C2WInteractionRoot.FederateJoinInteraction.FederateHandle", _FederateHandle_handle);
         _datamemberNameHandleMap.put("InteractionRoot.C2WInteractionRoot.FederateJoinInteraction.FederateId", _FederateId_handle);
         _datamemberNameHandleMap.put("InteractionRoot.C2WInteractionRoot.FederateJoinInteraction.FederateType", _FederateType_handle);
         _datamemberNameHandleMap.put("InteractionRoot.C2WInteractionRoot.FederateJoinInteraction.IsLateJoiner", _IsLateJoiner_handle);
@@ -196,6 +202,7 @@ public class FederateJoinInteraction extends C2WInteractionRoot {
         _datamemberNameHandleMap.put("InteractionRoot.C2WInteractionRoot.FederateJoinInteraction.originFed", _originFed_handle);
         _datamemberNameHandleMap.put("InteractionRoot.C2WInteractionRoot.FederateJoinInteraction.sourceFed", _sourceFed_handle);
 
+        _datamemberHandleNameMap.put(_FederateHandle_handle, "FederateHandle");
         _datamemberHandleNameMap.put(_FederateId_handle, "FederateId");
         _datamemberHandleNameMap.put(_FederateType_handle, "FederateType");
         _datamemberHandleNameMap.put(_IsLateJoiner_handle, "IsLateJoiner");
@@ -412,7 +419,8 @@ public class FederateJoinInteraction extends C2WInteractionRoot {
 
     @Override
     public String getParameterName(int datamemberHandle) {
-        if (datamemberHandle == _FederateId_handle) return "FederateId";
+        if (datamemberHandle == _FederateHandle_handle) return "FederateHandle";
+        else if (datamemberHandle == _FederateId_handle) return "FederateId";
         else if (datamemberHandle == _FederateType_handle) return "FederateType";
         else if (datamemberHandle == _IsLateJoiner_handle) return "IsLateJoiner";
         else if (datamemberHandle == _actualLogicalGenerationTime_handle) return "actualLogicalGenerationTime";
@@ -461,7 +469,8 @@ public class FederateJoinInteraction extends C2WInteractionRoot {
     @Override
     public String toString() {
         return getClass().getName() + "("
-                + "FederateId:" + get_FederateId()
+                + "FederateHandle:" + get_FederateHandle()
+                + "," + "FederateId:" + get_FederateId()
                 + "," + "FederateType:" + get_FederateType()
                 + "," + "IsLateJoiner:" + get_IsLateJoiner()
                 + "," + "actualLogicalGenerationTime:" + get_actualLogicalGenerationTime()
@@ -471,10 +480,28 @@ public class FederateJoinInteraction extends C2WInteractionRoot {
                 + ")";
     }
 
+    private int _FederateHandle = 0;
     private String _FederateId = "";
     private String _FederateType = "";
     private boolean _IsLateJoiner = false;
 
+    /**
+    * Set the value of the "FederateHandle" parameter to "value" for this parameter.
+    *
+    * @param value the new value for the "FederateHandle" parameter
+    */
+    public void set_FederateHandle( int value ) {
+        _FederateHandle = value;
+    }
+
+    /**
+    * Returns the value of the "FederateHandle" parameter of this interaction.
+    *
+    * @return the value of the "FederateHandle" parameter
+    */
+    public int get_FederateHandle() {
+        return _FederateHandle;
+    }
     /**
     * Set the value of the "FederateId" parameter to "value" for this parameter.
     *
@@ -575,6 +602,7 @@ public class FederateJoinInteraction extends C2WInteractionRoot {
     public FederateJoinInteraction( FederateJoinInteraction FederateJoinInteraction_var ) {
         super( FederateJoinInteraction_var );
 
+        set_FederateHandle( FederateJoinInteraction_var.get_FederateHandle() );
         set_FederateId( FederateJoinInteraction_var.get_FederateId() );
         set_FederateType( FederateJoinInteraction_var.get_FederateType() );
         set_IsLateJoiner( FederateJoinInteraction_var.get_IsLateJoiner() );
@@ -590,7 +618,8 @@ public class FederateJoinInteraction extends C2WInteractionRoot {
     * for this interaction
     */
     public Object getParameter( String datamemberName ) {
-        if ( "FederateId".equals(datamemberName) ) return get_FederateId();
+        if ( "FederateHandle".equals(datamemberName) ) return new Integer(get_FederateHandle());
+        else if ( "FederateId".equals(datamemberName) ) return get_FederateId();
         else if ( "FederateType".equals(datamemberName) ) return get_FederateType();
         else if ( "IsLateJoiner".equals(datamemberName) ) return new Boolean(get_IsLateJoiner());
         else return super.getParameter( datamemberName );
@@ -598,7 +627,8 @@ public class FederateJoinInteraction extends C2WInteractionRoot {
 
     protected boolean setParameterAux( String datamemberName, String val ) {
         boolean retval = true;
-        if ( "FederateId".equals( datamemberName) ) set_FederateId( val );
+        if ( "FederateHandle".equals( datamemberName) ) set_FederateHandle( Integer.parseInt(val) );
+        else if ( "FederateId".equals( datamemberName) ) set_FederateId( val );
         else if ( "FederateType".equals( datamemberName) ) set_FederateType( val );
         else if ( "IsLateJoiner".equals( datamemberName) ) set_IsLateJoiner( Boolean.parseBoolean(val) );
         else retval = super.setParameterAux( datamemberName, val );
@@ -608,7 +638,8 @@ public class FederateJoinInteraction extends C2WInteractionRoot {
 
     protected boolean setParameterAux( String datamemberName, Object val ) {
         boolean retval = true;
-        if ( "FederateId".equals( datamemberName) ) set_FederateId( (String)val );
+        if ( "FederateHandle".equals( datamemberName) ) set_FederateHandle( (Integer)val );
+        else if ( "FederateId".equals( datamemberName) ) set_FederateId( (String)val );
         else if ( "FederateType".equals( datamemberName) ) set_FederateType( (String)val );
         else if ( "IsLateJoiner".equals( datamemberName) ) set_IsLateJoiner( (Boolean)val );
         else retval = super.setParameterAux( datamemberName, val );
@@ -620,6 +651,7 @@ public class FederateJoinInteraction extends C2WInteractionRoot {
         super.copyFrom( object );
         if ( object instanceof FederateJoinInteraction ) {
             FederateJoinInteraction data = (FederateJoinInteraction)object;
+            _FederateHandle = data._FederateHandle;
             _FederateId = data._FederateId;
             _FederateType = data._FederateType;
             _IsLateJoiner = data._IsLateJoiner;

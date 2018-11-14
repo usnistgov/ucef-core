@@ -7,6 +7,7 @@ import org.cpswt.config.FederateJoinInfo;
 import org.joda.time.DateTime;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -27,19 +28,48 @@ public class FederatesMaintainer {
 
     private static final Logger logger = LogManager.getLogger(FederatesMaintainer.class);
 
+    private Map<Integer, String> discoveredObjectInstances = new HashMap<Integer, String>();
+    
     private Map<String, FederateJoinInfo> expectedFederatesByType;
     private Map<String, FederateJoinInfo> lateJoinerFederatesByType;
 
-    private final List<FederateInfo> onlineFederates;
-    private final List<FederateInfo> resignedFederates;
-
-    private ExperimentConfig originalExperimentConfig;
+    private Map<Integer, FederateInfo> onlineFederates;
+    private List<FederateInfo> resignedFederates;
 
     public FederatesMaintainer() {
-        this.onlineFederates = new ArrayList<>();
+        this.onlineFederates = new HashMap<Integer, FederateInfo>();
         this.resignedFederates = new ArrayList<>();
     }
 
+    public void discoverFederate(int handle, String name) {
+        if (discoveredObjectInstances.put(handle, name) != null) {
+            logger.warn("discovered multiple federate objects with the handle {}", handle);
+        }
+    }
+    
+    public void updateFederate(FederateObject instance) {
+        final int handle = instance.get_FederateHandle();
+        
+        if (isFederateDiscovered(handle)) {
+            instance.get_FederateId();
+            FederateInfo info = new FederateInfo(instance.get_FederateType());
+        }
+        
+        // store federate details in online
+    }
+    
+    public void resignFederate(int handle) {
+        if (discoveredObjectInstances.remove(handle) == null) {
+            logger.warn("failed to resign federate: no discovered federate with the handle {}", handle);
+        } else {
+            // move federate details into the archive
+        }
+    }
+    
+    public boolean isFederateDiscovered(int handle) {
+        return discoveredObjectInstances.containsKey(handle);
+    }
+    
     public void federateJoined(FederateInfo federateInfo) {
         federateInfo.setJoinTime(DateTime.now());
         this.onlineFederates.add(federateInfo);

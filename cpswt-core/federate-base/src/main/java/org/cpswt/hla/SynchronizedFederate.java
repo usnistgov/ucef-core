@@ -139,6 +139,8 @@ public class SynchronizedFederate extends NullFederateAmbassador {
     private double stepSize;
     public double getStepSize() { return this.stepSize; }
     private void setStepSize(double stepSize) { this.stepSize = stepSize; }
+    
+    private int federateHandle = 0;
 
     public SynchronizedFederate(FederateConfig federateConfig) {
         this.federateRTIInitWaitTime = federateConfig.federateRTIInitWaitTimeMs;
@@ -250,7 +252,7 @@ public class SynchronizedFederate extends NullFederateAmbassador {
                 attempts++;
                 logger.debug("[{}] federate joining federation [{}] attempt #{}", this.federateId, this.federationId, attempts);
                 synchronized (lrc) {
-                    this.lrc.joinFederationExecution(this.federateId, this.federationId, this, null);
+                    federateHandle = this.lrc.joinFederationExecution(this.federateId, this.federationId, this, null);
                 }
                 federationNotPresent = false;
                 logger.debug("[{}] federate joined federation [{}] successfully", this.federateId, this.federationId);
@@ -278,10 +280,9 @@ public class SynchronizedFederate extends NullFederateAmbassador {
 
     public void notifyFederationOfJoin() {
         synchronized (this.lrc) {
-            // every federate will send a "FederateJoinInteraction" and a "FederateResignInteraction"
-            // so we need to publish these objects on current LRC
+            // every federate will send a "FederateJoinInteraction"
+            // so we need to publish this interaction on current LRC
             FederateJoinInteraction.publish(this.lrc);
-            FederateResignInteraction.publish(this.lrc);
 
             // create a notification for "join" and send it
             FederateJoinInteraction joinInteraction = new FederateJoinInteraction();
@@ -290,6 +291,7 @@ public class SynchronizedFederate extends NullFederateAmbassador {
             joinInteraction.set_FederateId(this.federateId);
             joinInteraction.set_FederateType(this.federateType);
             joinInteraction.set_IsLateJoiner(this.isLateJoiner);
+            joinInteraction.set_FederateHandle(this.federateHandle);
 
             try {
                 logger.trace("Sending FederateJoinInteraction for federate {}", this.federateId);
@@ -297,25 +299,6 @@ public class SynchronizedFederate extends NullFederateAmbassador {
             }
             catch (Exception ex) {
                 logger.error("Error while sending FederateJoinInteraction for federate {}", this.federateId);
-            }
-        }
-    }
-
-    public void notifyFederationOfResign() {
-        synchronized (this.lrc) {
-            FederateResignInteraction resignInteraction = new FederateResignInteraction();
-            resignInteraction.set_sourceFed(this.federateId);
-            resignInteraction.set_originFed(this.federateId);
-            resignInteraction.set_FederateId(this.federateId);
-            resignInteraction.set_FederateType(this.federateType);
-            resignInteraction.set_IsLateJoiner(this.isLateJoiner);
-
-            try {
-                logger.trace("Sending FederateResignInteraction for federate {}", this.federateId);
-                resignInteraction.sendInteraction(this.lrc);
-            }
-            catch(Exception ex) {
-                logger.error("Error while sending FederateResignInteraction for federate {}", this.federateId);
             }
         }
     }
@@ -1325,8 +1308,6 @@ public class SynchronizedFederate extends NullFederateAmbassador {
         if(_receivedSimEnd != null) {
             readyToResign(); // synchronize
         }
-        
-        notifyFederationOfResign();
         
         try {
             // wait for all outbound messages to reach the federation manager

@@ -7,6 +7,7 @@ import akka.http.javadsl.Http;
 import akka.http.javadsl.ServerBinding;
 import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
+import akka.http.javadsl.model.StatusCodes;
 import akka.http.javadsl.marshallers.jackson.Jackson;
 import akka.http.javadsl.server.AllDirectives;
 import akka.http.javadsl.server.Route;
@@ -23,7 +24,6 @@ import org.cpswt.config.FederateConfigParser;
 import org.cpswt.hla.FederateState;
 import org.cpswt.hla.FederationManager;
 import org.cpswt.hla.FederationManagerConfig;
-import org.cpswt.host.api.ControlAction;
 import org.cpswt.host.api.StateChangeResponse;
 
 import java.io.IOException;
@@ -33,73 +33,53 @@ import java.util.concurrent.CompletionStage;
  * Federation Manager hosting through Akka-HTTP
  */
 public class FederationManagerHostApp extends AllDirectives {
+    private static final Logger logger = LogManager.getLogger();
+    
+    private ObjectMapper objectMapper;
 
-    private static final Logger logger = LogManager.getLogger(FederationManagerHostApp.class);
+    private FederationManagerConfig federationManagerConfig;
+    
     private FederationManager federationManager;
 
     private String bindingAddress;
 
-    private String getBindingAddress() {
-        return bindingAddress;
-    }
-
     private int port;
-
-    private int getPort() {
-        return port;
-    }
-
-    private FederationManagerConfig federationManagerConfig;
-    private ObjectMapper objectMapper;
-
-    public FederationManagerHostApp() {
+    
+    public FederationManagerHostApp(String[] args) {
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JodaModule());
         this.objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         this.objectMapper.configure(SerializationFeature.WRITE_DATES_WITH_ZONE_ID, false);
+        
+        initializeFederationManager(args);
     }
 
-    void parseConfig(String[] args) {
-        this.federationManagerConfig = this.getFederationManagerParameter(args);
+    private void initializeFederationManager(String[] args) {
+        try {
+            this.federationManagerConfig = this.parseConfigurationFile(args);
+            this.federationManager = new FederationManager(this.federationManagerConfig);
+        } catch (IOException e) {
+            throw new RuntimeException("failed to initialize federation manager", e);
+        }
         this.bindingAddress = this.federationManagerConfig.bindHost;
         this.port = this.federationManagerConfig.port;
-
     }
-
-    void initFederationManager() {
-        try {
-            this.federationManager = new FederationManager(this.federationManagerConfig);
-        } catch (Exception e) {
-            logger.error("Error while initializing FederationManager! " + e.getMessage());
-            logger.error(e);
-        }
+    
+    private FederationManagerConfig parseConfigurationFile(String[] args) {
+        FederateConfigParser federateConfigParser = new FederateConfigParser();
+        return federateConfigParser.parseArgs(args, FederationManagerConfig.class);
     }
-
-    FederationManagerConfig getFederationManagerParameter(String[] args) {
-        try {
-            FederationManagerConfig federationManagerConfig;
-            FederateConfigParser federateConfigParser = new FederateConfigParser();
-
-            federationManagerConfig = federateConfigParser.parseArgs(args, FederationManagerConfig.class);
-            return federationManagerConfig;
-        } catch (Exception fedMgrExp) {
-            logger.error("There was an error starting the federation manager. Reason: {}", fedMgrExp.getMessage());
-            logger.error(fedMgrExp);
-            System.exit(-1);
-        }
-
-        return null;
+    
+    private void startFederationManager() {
+        this.federationManager.start();
     }
 
     Route createRoute() {
         return route(
                 get(() ->
-                        path("fedmgr", () -> {
-                            if(federationManager == null) {
-                                return reject();
-                            }
-                            return completeOK(new StateResponse(federationManager.getFederateState()), Jackson.marshaller(this.objectMapper));
-                        })
+                        path("fedmgr", () -> 
+                                completeOK(new StateResponse(federationManager.getFederateState()), Jackson.marshaller(this.objectMapper))
+                        )
                 ),
                 get(() ->
                         path("federates", () ->
@@ -109,98 +89,37 @@ public class FederationManagerHostApp extends AllDirectives {
                 post(() ->
                         path("fedmgr", () ->
                                 entity(Jackson.unmarshaller(FederationManagerControlRequest.class), controlRequest -> {
-                                    //parameter("action", actionStr -> {
+                                    final FederateState currentState = federationManager.getFederateState();
+                                    final FederateState targetState = controlRequest.action.getTargetState();
 
-                                    ControlAction action = controlRequest.action; // ControlAction.valueOf(actionStr);
-                                    FederateState currentState = federationManager.getFederateState();
-                                    FederateState targetState = action.getTargetState();
-
-                                    StateChangeResponse response = null;
-
-                                    if (currentState.canTransitionTo(targetState)) {
-                                        try {
-                                            switch (action) {
-                                                case START:
-                                                    logger.debug("Starting simulation");
-                                                    response = new StateChangeResponse(currentState, FederateState.INITIALIZED);
-                                                    this.startSimulationAsync();
-                                                    break;
-                                                case PAUSE:
-                                                    logger.debug("Pause simulation");
-                                                  this.federationManager.pauseSimulation();
-                                                    response = new StateChangeResponse(currentState, federationManager.getFederateState());
-                                                    break;
-                                                case RESUME:
-                                                    logger.debug("Resume simulation");
-                                                   this.federationManager.resumeSimulation();
-                                                    response = new StateChangeResponse(currentState, federationManager.getFederateState());
-                                                    break;
-                                                case TERMINATE:
-                                                    logger.debug("Terminate simulation");
-                                                  response = new StateChangeResponse(federationManager.getFederateState(), FederateState.TERMINATING);
-                                                    this.terminateSimulationAsync();
-                                                    break;
-                                            }
-                                        } catch (Exception ex) {
-                                            logger.error("There was an error while trying to transition FederationManager for action {}", action);
-                                            logger.error(ex);
-                                        }
+                                    if (federationManager.setFederateState(targetState)) {
+                                        return completeOK(new StateChangeResponse(currentState, targetState), Jackson.marshaller(this.objectMapper));
                                     } else {
-                                        response = new StateChangeResponse(currentState, currentState, "FederationManager cannot transition from " + currentState + " state to " + targetState);
+                                        return complete(StatusCodes.BAD_REQUEST);
                                     }
-
-                                    return completeOK(response, Jackson.marshaller(this.objectMapper));
                                 })
                         )
                 )
         );
     }
-
-    private void startSimulationAsync() {
-        new Thread() {
-            @Override
-            public void run() {
-                try {
-                    federationManager.startSimulation();
-                } catch (Exception ex) {
-                    logger.error("There was an error while starting the simulation", ex);
-                }
-            }
-        }.start();
-    }
-
-    private void terminateSimulationAsync() {
-        new Thread() {
-            @Override
-            public void run() {
-                try {
-                    federationManager.terminateSimulation();
-                } catch (Exception ex) {
-                    logger.error("There was an error while terminating the simulation", ex);
-                }
-            }
-        }.start();
-    }
-
-
+    
     public static void main(String[] args) throws Exception {
-
+        // from the Routing DSL example at https://doc.akka.io/docs/akka-http/current/routing-dsl/index.html
         ActorSystem system = ActorSystem.create("routes");
 
         final Http http = Http.get(system);
         final ActorMaterializer materializer = ActorMaterializer.create(system);
-       FederationManagerHostApp app = new FederationManagerHostApp();
-       app.parseConfig(args);
-
-        app.initFederationManager();
+        
+        FederationManagerHostApp app = new FederationManagerHostApp(args);
+        app.startFederationManager();
+        
         final Flow<HttpRequest, HttpResponse, NotUsed> routeFlow = app.createRoute().flow(system, materializer);
         final CompletionStage<ServerBinding> binding = http.bindAndHandle(routeFlow,
-                ConnectHttp.toHost(app.getBindingAddress(), app.getPort()), materializer);
+                ConnectHttp.toHost(app.bindingAddress, app.port), materializer);
 
-        logger.info("Server online at {}:{} ...", app.getBindingAddress(), app.getPort());
-        System.in.read();
+        logger.info("Server online at {}:{}", app.bindingAddress, app.port);
+        System.in.read(); // check fedmanager instead . . .
 
-        binding.thenCompose(ServerBinding::unbind)
-                .thenAccept(unbound -> system.terminate());
+        binding.thenCompose(ServerBinding::unbind).thenAccept(unbound -> system.terminate());
     }
 }
