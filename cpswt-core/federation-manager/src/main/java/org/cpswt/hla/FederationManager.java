@@ -52,11 +52,7 @@ import org.apache.logging.log4j.Logger;
 import org.cpswt.utils.CpswtUtils;
 
 import org.portico.impl.hla13.types.DoubleTime;
-import org.portico.impl.hla13.types.HLA13ReflectedAttributes;
 
-import org.portico.lrc.services.object.msg.UpdateAttributes;
-
-import hla.rti.ArrayIndexOutOfBounds;
 import hla.rti.ConcurrentAccessAttempted;
 import hla.rti.CouldNotOpenFED;
 import hla.rti.ErrorReadingFED;
@@ -118,8 +114,6 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
     private long time_diff;
     
     private String rootDirectory;
-    
-    private Set<Integer> federateObjectHandles = new HashSet<Integer>();
 
     private Thread mainLoopThread = null;
     
@@ -556,9 +550,9 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
     
     private void waitForFederatesToLeave() {
         // the federation manager itself is also stored in federateObjectHandles 
-        logger.debug("Waiting for {} federates to resign...", federateObjectHandles.size()-1);
+        logger.debug("Waiting for {} federates to resign...", federatesMaintainer.getOnlineFederates().size()-1);
         
-        while (federateObjectHandles.size() != 1) {
+        while (federatesMaintainer.getOnlineFederates().size() != 1) {
             try {
                 synchronized (lrc) { // i have no idea what problems this can cause
                     lrc.tick();
@@ -763,11 +757,13 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
 
     @Override
     public void discoverObjectInstance(int objectHandle, int objectClassHandle, String objectName) {
-        super.discoverObjectInstance(objectHandle, objectClassHandle, objectName);
+        ObjectRoot objectRoot = ObjectRoot.discover(objectClassHandle, objectHandle);
         
         if (FederateObject.match(objectClassHandle)) {
-            federatesMaintainer.discover(objectHandle, objectName);
+            FederateObject federateObject = (FederateObject) objectRoot;
+            federatesMaintainer.discoverFederate(objectHandle);
             federationEventsHandler.handleEvent(IC2WFederationEventsHandler.C2W_FEDERATION_EVENTS.FEDERATE_JOINED, Integer.toString(objectHandle));
+            federateObject.requestUpdate(getLRC());
         }
     }
 
@@ -779,9 +775,8 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
 
     @Override
     public void removeObjectInstance(int theObject, byte[] tag) {
-        if (federatesMaintainer.contains(theObject)) {
-            final String federateId = federatesMaintainer.getID(theObject);
-            federatesMaintainer.remove(theObject);
+        if (federatesMaintainer.getOnlineFederate(theObject) != null) {
+            federatesMaintainer.removeFederate(theObject);
             federationEventsHandler.handleEvent(IC2WFederationEventsHandler.C2W_FEDERATION_EVENTS.FEDERATE_RESIGNED, Integer.toString(theObject));
         }
     }
@@ -802,7 +797,7 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
         
         if (object instanceof FederateObject) {
             FederateObject federateObject = (FederateObject) object;
-            federatesMaintainer.update(objectHandle, federateObject);
+            federatesMaintainer.updateFederate(objectHandle, federateObject);
         }
 
         logger.trace("ObjectRootInstance received through reflectAttributeValues");
@@ -848,7 +843,7 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
                 // ??
                 federationEventsHandler.handleEvent(IC2WFederationEventsHandler.C2W_FEDERATION_EVENTS.FEDERATE_JOINED, federateJoinInteraction.get_FederateId());
 
-                this.federatesMaintainer.federateJoined(new FederateInfo(federateJoinInteraction.get_FederateId(), federateJoinInteraction.get_FederateType(), federateJoinInteraction.get_IsLateJoiner()));
+                this.federatesMaintainer.updateFederate(federateJoinInteraction);
 
             }
         } catch (Exception e) {
@@ -897,7 +892,7 @@ public class FederationManager extends SynchronizedFederate implements COAExecut
                 // ??s
                 federationEventsHandler.handleEvent(IC2WFederationEventsHandler.C2W_FEDERATION_EVENTS.FEDERATE_JOINED, federateJoinInteraction.get_FederateId());
 
-                this.federatesMaintainer.federateJoined(new FederateInfo(federateJoinInteraction.get_FederateId(), federateJoinInteraction.get_FederateType(), federateJoinInteraction.get_IsLateJoiner()));
+                this.federatesMaintainer.updateFederate(federateJoinInteraction);
 
             }
         } catch (Exception e) {

@@ -7,71 +7,68 @@ import org.joda.time.DateTime;
  * FederateInfo
  */
 public class FederateInfo {
-    private String federateId;
-    private String federateType;
-    private boolean isLateJoiner;
+    private final int federateHandle;
+    private final String federateType;
+    private final String federateHost;
+    private final DateTime joinTime;
+    
+    private String federateId = null;
+    private boolean isExpected = false;
+    private DateTime resignTime = null;
 
-    DateTime joinTime;
-    DateTime resignTime;
-
-    boolean timedOutResign;
-
+    public int getFederateHandle() {
+        return federateHandle;
+    }
+    
+    public String getFederateType() {
+        return federateType;
+    }
+    
+    public String getFederateHost() {
+        return federateHost;
+    }
+    
+    public DateTime getJoinTime() {
+        return joinTime;
+    }
+    
     public String getFederateId() {
         return federateId;
     }
 
-    public String getFederateType() {
-        return federateType;
+    public boolean isExpected() {
+        return isExpected;
     }
-
-    public boolean isLateJoiner() {
-        return isLateJoiner;
-    }
-
-    public boolean isTimedOutResign() {
-        return timedOutResign;
-    }
-
-    public DateTime getJoinTime() {
-        return joinTime;
-    }
-
+    
     public DateTime getResignTime() {
         return resignTime;
     }
-
-    public void setJoinTime(DateTime joinTime) {
-        this.joinTime = joinTime;
+    
+    public void update(FederateJoinInteraction interaction) {
+        this.federateId = interaction.get_FederateId();
+        this.isExpected = !interaction.get_IsLateJoiner();
     }
 
     public void setResignTime(DateTime resignTime) {
         this.resignTime = resignTime;
     }
 
-    public void setTimedOutResign(boolean timedOutResign) {
-        this.timedOutResign = timedOutResign;
-    }
-
-    @JsonIgnore
-    public boolean hasJoined() {
-        return this.joinTime != null;
-    }
-
     @JsonIgnore
     public boolean hasResigned() {
-        return this.resignTime != null;
+        return resignTime != null;
     }
 
-    public FederateInfo(String federateId, String federateType, boolean isLateJoiner) {
-        this.federateId = federateId;
-        this.federateType = federateType;
-        this.isLateJoiner = isLateJoiner;
+    public FederateInfo(FederateObject object) {
+        this.federateHandle = object.get_FederateHandle();
+        this.federateType = object.get_FederateType();
+        this.federateHost = object.get_FederateHost();
+        this.joinTime = DateTime.now();
     }
 
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof FederateInfo) {
-            return this.federateId.equalsIgnoreCase(((FederateInfo) obj).federateId);
+            return this.federateHandle == ((FederateInfo)obj).federateHandle;
         }
         return false;
     }
